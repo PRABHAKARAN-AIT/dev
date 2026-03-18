@@ -2,14 +2,6 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'development',
-                    url: 'git@github.com:PRABHAKARAN-AIT/dev.git',
-                    credentialsId: 'github-credentials'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t my-app .'
