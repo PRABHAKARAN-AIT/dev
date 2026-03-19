@@ -1,0 +1,9 @@
+version: '3'
+services:
+  website:
+    build: .
+    container_name: dev-site
+    ports:
+      - "8081:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
