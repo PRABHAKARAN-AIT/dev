@@ -8,7 +8,7 @@ pipeline {
     }
 
     environment {
-        TEST_DEV_SERVER_IP     = '107.23.154.141'
+        TEST_DEV_SERVER_IP     = '13.50.239.205'
         TEST_STAGING_SERVER_IP = '54.167.75.234'
         GITHUB_CREDENTIALS_ID  = 'github-creds'
         HQ_DEV_CRED            = 'HQ_DEV_SSH'
@@ -41,13 +41,13 @@ pipeline {
                             sh '''
                                 sshpass -p "$HQ_DEV_PASS" \
                                 ssh -o StrictHostKeyChecking=no \
-                                "$HQ_DEV_USER"@"$TEST_DEV_SERVER_IP" "
+                                ec2-user@"$TEST_DEV_SERVER_IP" "
                                     set -e &&
-                                    cd /home/ubuntu/projects/dev &&
+                                    cd /home/ec2-user/projects/dev &&
                                     git fetch origin &&
                                     git reset --hard origin/development &&
                                     chmod +x deploy/development.sh &&
-                                    bash deploy/development.sh
+                                    bbash deploy/development.sh
                                 "
                             '''
                         }
