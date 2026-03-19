@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 echo 'Starting Staging Deployment...'
-cd /home/ubuntu/projects/dev || exit
+cd /home/ec2-user/projects/dev || exit
 git fetch origin
 git reset --hard origin/release-candidate
 docker-compose -f docker-compose.yml down

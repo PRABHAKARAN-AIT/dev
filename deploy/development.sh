@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 echo 'Starting Development Deployment...'
-cd /home/ubuntu/projects/dev || exit
+cd /home/ec2-user/projects/dev || exit
 git fetch origin
 git reset --hard origin/development
 docker-compose -f docker-compose.dev.yml down
