@@ -47,7 +47,7 @@ pipeline {
                                     git fetch origin &&
                                     git reset --hard origin/development &&
                                     chmod +x deploy/development.sh &&
-                                    bbash deploy/development.sh
+                                    bash deploy/development.sh
                                 "
                             '''
                         }
