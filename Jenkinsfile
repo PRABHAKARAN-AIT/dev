@@ -1,5 +1,3 @@
-#!/usr/bin/env groovy
-
 pipeline {
     agent any
 
@@ -9,10 +7,9 @@ pipeline {
 
     environment {
         TEST_DEV_SERVER_IP     = '13.50.239.205'
-        TEST_STAGING_SERVER_IP = '54.167.75.234'
+        TEST_STAGING_SERVER_IP = '13.50.239.205'
         GITHUB_CREDENTIALS_ID  = 'github-creds'
-        HQ_DEV_CRED            = 'HQ_DEV_SSH'
-        HQ_STAGING_CRED        = 'HQ_STAGING_SSH'
+        BW_PASSWORD            = credentials('BW_PASSWORD')
     }
 
     triggers {
@@ -34,41 +31,19 @@ pipeline {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'development') {
-                        withCredentials([usernamePassword(
-                            credentialsId: env.HQ_DEV_CRED,
-                            usernameVariable: 'HQ_DEV_USER',
-                            passwordVariable: 'HQ_DEV_PASS')]) {
-                            sh '''
-                                sshpass -p "$HQ_DEV_PASS" \
-                                ssh -o StrictHostKeyChecking=no \
-                                ec2-user@"$TEST_DEV_SERVER_IP" "
-                                    set -e &&
-                                    cd /home/ec2-user/projects/dev &&
-                                    git fetch origin &&
-                                    git reset --hard origin/development &&
-                                    chmod +x deploy/development.sh &&
-                                    bash deploy/development.sh
-                                "
-                            '''
-                        }
+                        sh '''
+                            export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
+                            DEV_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
+                            DEV_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
+                            sshpass -p "$DEV_PASS" ssh -o StrictHostKeyChecking=no "$DEV_USER"@"$TEST_DEV_SERVER_IP" "set -e && cd /home/ec2-user/projects/dev && git fetch origin && git reset --hard origin/development && chmod +x deploy/development.sh && bash deploy/development.sh"
+                        '''
                     } else if (env.BRANCH_NAME == 'release-candidate') {
-                        withCredentials([usernamePassword(
-                            credentialsId: env.HQ_STAGING_CRED,
-                            usernameVariable: 'HQ_STAGING_USER',
-                            passwordVariable: 'HQ_STAGING_PASS')]) {
-                            sh '''
-                                sshpass -p "$HQ_STAGING_PASS" \
-                                ssh -o StrictHostKeyChecking=no \
-                                "$HQ_STAGING_USER"@"$TEST_STAGING_SERVER_IP" "
-                                    set -e &&
-                                    cd /home/ubuntu/projects/dev &&
-                                    git fetch origin &&
-                                    git reset --hard origin/release-candidate &&
-                                    chmod +x deploy/staging.sh &&
-                                    bash deploy/staging.sh
-                                "
-                            '''
-                        }
+                        sh '''
+                            export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
+                            STAGING_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
+                            STAGING_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
+                            sshpass -p "$STAGING_PASS" ssh -o StrictHostKeyChecking=no "$STAGING_USER"@"$TEST_STAGING_SERVER_IP" "set -e && cd /home/ec2-user/projects/dev && git fetch origin && git reset --hard origin/release-candidate && chmod +x deploy/staging.sh && bash deploy/staging.sh"
+                        '''
                     }
                 }
             }
