@@ -34,7 +34,7 @@ pipeline {
                 sh '''
                     export BW_CLIENTID=$BW_CLIENT_ID
                     export BW_CLIENTSECRET=$BW_CLIENT_SECRET
-                    bw login --apikey
+                    bw login --apikey 2>/dev/null || true
                     export BW_SESSION=$(bw unlock --passwordenv BW_CLIENT_SECRET --raw)
                     bw sync --session $BW_SESSION
                     DEV_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
