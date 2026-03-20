@@ -12,6 +12,7 @@ pipeline {
         BW_CLIENT_ID           = credentials('BW_CLIENT_ID')
         BW_CLIENT_SECRET       = credentials('BW_CLIENT_SECRET')
         BW_ORG_ID              = credentials('BW_ORG_ID')
+        BW_MASTER_PASSWORD     = credentials('BW_MASTER_PASSWORD')
     }
 
     triggers {
@@ -35,7 +36,7 @@ pipeline {
                     export BW_CLIENTID=$BW_CLIENT_ID
                     export BW_CLIENTSECRET=$BW_CLIENT_SECRET
                     bw login --apikey 2>/dev/null || true
-                    export BW_SESSION=$(bw unlock --passwordenv BW_CLIENT_SECRET --raw)
+                    export BW_SESSION=$(echo "$BW_MASTER_PASSWORD" | bw unlock --raw)
                     bw sync --session $BW_SESSION
                     DEV_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
                     DEV_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
