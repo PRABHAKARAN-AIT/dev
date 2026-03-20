@@ -9,7 +9,9 @@ pipeline {
         TEST_DEV_SERVER_IP     = '13.50.239.205'
         TEST_STAGING_SERVER_IP = '13.50.239.205'
         GITHUB_CREDENTIALS_ID  = 'github-creds'
-        BW_PASSWORD            = credentials('BW_PASSWORD')
+        BW_CLIENT_ID           = credentials('BW_CLIENT_ID')
+        BW_CLIENT_SECRET       = credentials('BW_CLIENT_SECRET')
+        BW_ORG_ID              = credentials('BW_ORG_ID')
     }
 
     triggers {
@@ -27,21 +29,34 @@ pipeline {
                     credentialsId: env.GITHUB_CREDENTIALS_ID)
             }
         }
+        stage('Fetch Credentials from Bitwarden') {
+            steps {
+                sh '''
+                    export BW_CLIENTID=$BW_CLIENT_ID
+                    export BW_CLIENTSECRET=$BW_CLIENT_SECRET
+                    bw login --apikey
+                    export BW_SESSION=$(bw unlock --passwordenv BW_CLIENT_SECRET --raw)
+                    bw sync --session $BW_SESSION
+                    DEV_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
+                    DEV_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
+                    echo $DEV_USER > /tmp/dev_user.txt
+                    echo $DEV_PASS > /tmp/dev_pass.txt
+                '''
+            }
+        }
         stage('Deploy') {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'development') {
                         sh '''
-                            export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
-                            DEV_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
-                            DEV_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
+                            DEV_USER=$(cat /tmp/dev_user.txt)
+                            DEV_PASS=$(cat /tmp/dev_pass.txt)
                             sshpass -p "$DEV_PASS" ssh -o StrictHostKeyChecking=no "$DEV_USER"@"$TEST_DEV_SERVER_IP" "set -e && cd /home/ec2-user/projects/dev && git fetch origin && git reset --hard origin/development && chmod +x deploy/development.sh && bash deploy/development.sh"
                         '''
                     } else if (env.BRANCH_NAME == 'release-candidate') {
                         sh '''
-                            export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
-                            STAGING_USER=$(bw get username HQ_DEV_SSH --session $BW_SESSION)
-                            STAGING_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
+                            STAGING_USER=$(cat /tmp/dev_user.txt)
+                            STAGING_PASS=$(cat /tmp/dev_pass.txt)
                             sshpass -p "$STAGING_PASS" ssh -o StrictHostKeyChecking=no "$STAGING_USER"@"$TEST_STAGING_SERVER_IP" "set -e && cd /home/ec2-user/projects/dev && git fetch origin && git reset --hard origin/release-candidate && chmod +x deploy/staging.sh && bash deploy/staging.sh"
                         '''
                     }
