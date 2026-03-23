@@ -6,8 +6,8 @@ pipeline {
     }
 
     environment {
-        TEST_DEV_SERVER_IP     = '16.170.213.190'
-        TEST_STAGING_SERVER_IP = '16.170.213.190'
+        TEST_DEV_SERVER_IP     = '13.49.125.254'
+        TEST_STAGING_SERVER_IP = '13.49.125.254'
         GITHUB_CREDENTIALS_ID  = 'github-creds'
         BW_CLIENT_ID           = credentials('BW_CLIENT_ID')
         BW_CLIENT_SECRET       = credentials('BW_CLIENT_SECRET')
