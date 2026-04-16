@@ -9,7 +9,7 @@ pipeline {
         TEST_DEV_SERVER_IP     = '98.93.238.243'
         TEST_STAGING_SERVER_IP = '98.93.238.243'
         GITHUB_CREDENTIALS_ID  = 'github-creds'
-
+        SSH_CREDENTIALS_ID     = 'ec2-ssh-key'
         BW_CLIENT_ID           = credentials('BW_CLIENT_ID')
         BW_CLIENT_SECRET       = credentials('BW_CLIENT_SECRET')
         BW_ORG_ID              = credentials('BW_ORG_ID')
@@ -64,33 +64,33 @@ pipeline {
 
                     if (env.BRANCH_NAME == 'development') {
 
-                        sh '''
-                            DEV_USER=$(cat /tmp/dev_user.txt)
-
-                            ssh -o StrictHostKeyChecking=no $DEV_USER@$TEST_DEV_SERVER_IP "
-                                set -e
-                                cd /home/ubuntu/projects/dev
-                                git fetch origin
-                                git reset --hard origin/development
-                                chmod +x deploy/development.sh
-                                bash deploy/development.sh
-                            "
-                        '''
+                        sshagent([env.SSH_CREDENTIALS_ID]) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ubuntu@${TEST_DEV_SERVER_IP} '
+                                    set -e
+                                    cd /home/ubuntu/projects/dev
+                                    git fetch origin
+                                    git reset --hard origin/development
+                                    chmod +x deploy/development.sh
+                                    bash deploy/development.sh
+                                '
+                            """
+                        }
 
                     } else if (env.BRANCH_NAME == 'release-candidate') {
 
-                        sh '''
-                            STAGING_USER=$(cat /tmp/dev_user.txt)
-
-                            ssh -o StrictHostKeyChecking=no $STAGING_USER@$TEST_STAGING_SERVER_IP "
-                                set -e
-                                cd /home/ubuntu/projects/dev
-                                git fetch origin
-                                git reset --hard origin/release-candidate
-                                chmod +x deploy/staging.sh
-                                bash deploy/staging.sh
-                            "
-                        '''
+                        sshagent([env.SSH_CREDENTIALS_ID]) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ubuntu@${TEST_STAGING_SERVER_IP} '
+                                    set -e
+                                    cd /home/ubuntu/projects/dev
+                                    git fetch origin
+                                    git reset --hard origin/release-candidate
+                                    chmod +x deploy/staging.sh
+                                    bash deploy/staging.sh
+                                '
+                            """
+                        }
                     }
                 }
             }
