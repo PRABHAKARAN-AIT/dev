@@ -6,14 +6,20 @@ pipeline {
     }
 
     environment {
-        TEST_DEV_SERVER_IP     = '98.93.238.243'
-        TEST_STAGING_SERVER_IP = '98.93.238.243'
-        GITHUB_CREDENTIALS_ID  = 'github-creds'
-        SSH_CREDENTIALS_ID     = 'ec2-ssh-key'
-        BW_CLIENT_ID           = credentials('BW_CLIENT_ID')
-        BW_CLIENT_SECRET       = credentials('BW_CLIENT_SECRET')
-        BW_ORG_ID              = credentials('BW_ORG_ID')
-        BW_MASTER_PASSWORD     = credentials('BW_MASTER_PASSWORD')
+        // Development Server
+        TEST_DEV_SERVER_IP = '16.16.70.229'
+
+        // Staging Server
+        TEST_STAGING_SERVER_IP = '16.16.70.229'
+
+        // Jenkins Credentials
+        GITHUB_CREDENTIALS_ID = 'github-creds'
+        SSH_CREDENTIALS_ID    = 'ec2-ssh-key'
+
+        // Bitwarden Credentials
+        BW_CLIENT_ID       = credentials('BW_CLIENT_ID')
+        BW_CLIENT_SECRET   = credentials('BW_CLIENT_SECRET')
+        BW_MASTER_PASSWORD = credentials('BW_MASTER_PASSWORD')
     }
 
     triggers {
@@ -24,7 +30,7 @@ pipeline {
 
         stage('Pipeline Started') {
             steps {
-                echo 'CI/CD Pipeline Triggered'
+                echo "CI/CD Pipeline Triggered"
             }
         }
 
@@ -33,27 +39,22 @@ pipeline {
                 git(
                     url: 'https://github.com/PRABHAKARAN-AIT/dev.git',
                     branch: env.BRANCH_NAME ?: 'development',
-                    credentialsId: env.GITHUB_CREDENTIALS_ID
+                    credentialsId: GITHUB_CREDENTIALS_ID
                 )
             }
         }
 
-        stage('Fetch Credentials from Bitwarden') {
+        stage('Bitwarden Login') {
             steps {
                 sh '''
                     export BW_CLIENTID=$BW_CLIENT_ID
                     export BW_CLIENTSECRET=$BW_CLIENT_SECRET
 
                     bw login --apikey 2>/dev/null || true
+
                     export BW_SESSION=$(echo "$BW_MASTER_PASSWORD" | bw unlock --raw)
 
-                    bw sync --session $BW_SESSION
-
-                    DEV_USER=ubuntu
-                    DEV_PASS=$(bw get password HQ_DEV_SSH --session $BW_SESSION)
-
-                    echo $DEV_USER > /tmp/dev_user.txt
-                    echo $DEV_PASS > /tmp/dev_pass.txt
+                    bw sync --session "$BW_SESSION"
                 '''
             }
         }
@@ -64,14 +65,19 @@ pipeline {
 
                     if (env.BRANCH_NAME == 'development') {
 
-                        sshagent([env.SSH_CREDENTIALS_ID]) {
+                        sshagent([SSH_CREDENTIALS_ID]) {
+
                             sh """
                                 ssh -o StrictHostKeyChecking=no ubuntu@${TEST_DEV_SERVER_IP} '
                                     set -e
+
                                     cd /home/ubuntu/projects/dev
+
                                     git fetch origin
                                     git reset --hard origin/development
+
                                     chmod +x deploy/development.sh
+
                                     bash deploy/development.sh
                                 '
                             """
@@ -79,18 +85,28 @@ pipeline {
 
                     } else if (env.BRANCH_NAME == 'release-candidate') {
 
-                        sshagent([env.SSH_CREDENTIALS_ID]) {
+                        sshagent([SSH_CREDENTIALS_ID]) {
+
                             sh """
                                 ssh -o StrictHostKeyChecking=no ubuntu@${TEST_STAGING_SERVER_IP} '
                                     set -e
+
                                     cd /home/ubuntu/projects/dev
+
                                     git fetch origin
                                     git reset --hard origin/release-candidate
+
                                     chmod +x deploy/staging.sh
+
                                     bash deploy/staging.sh
                                 '
                             """
                         }
+
+                    } else {
+
+                        echo "No deployment configured for branch: ${env.BRANCH_NAME}"
+
                     }
                 }
             }
@@ -98,12 +114,15 @@ pipeline {
     }
 
     post {
+
         success {
-            echo 'Deployment completed successfully!'
+            echo "Deployment completed successfully!"
         }
+
         failure {
-            echo 'Deployment failed. Check Jenkins logs.'
+            echo "Deployment failed. Check Jenkins logs."
         }
+
         always {
             cleanWs()
         }
